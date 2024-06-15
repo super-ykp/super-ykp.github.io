@@ -355,16 +355,17 @@ func Draw(screen *ebiten.Image) {
 		c := color.RGBA{255, 0, 0, 255}
 		mytext.Draw(screen, common.SCREEN_HEIGHT/2+int(of), st, 0, c)
 	} else if this.manager_status == MANAGER_TITLE { //タイトル文字..................
-		st = "NE CORD"
+		st = "NECO Parachute"
 		c := color.RGBA{0, 0, 255, 255}
 		mytext.Draw(screen, common.SCREEN_HEIGHT/2-40, st, 0, c)
 
 		st = "Press space key or tap screen."
 		c = color.RGBA{0, 255, 255, 255}
 		mytext.Draw(screen, common.SCREEN_HEIGHT/2+40, st, 1, c)
-		if common.Builddate != "" {
-			mytext.ScoreDraw(screen, 0, common.SCREEN_WIDTH, "BUILD>"+common.Builddate, color.RGBA{255, 255, 255, 255})
-		}
+		//DEBUG-------------
+		//if common.Builddate != "" {
+		//	mytext.ScoreDraw(screen, 0, common.SCREEN_WIDTH, "BUILD>"+common.Builddate, color.RGBA{255, 255, 255, 255})
+		//}
 	}
 	//DEBUG--------------------
 	//str := fmt.Sprintf("%d ", m_DispFps)
