@@ -1,1 +1,88 @@
+<!DOCTYPE html>
+<script src="wasm_exec.js"></script>
+<script>
 
+main()
+
+async function main(){
+  //WebAssembly.instantiateStreaming未生成なら
+  if (!WebAssembly.instantiateStreaming) {
+      //instantiateStreamingメソッドを作成する
+      WebAssembly.instantiateStreaming = async (resp, importObject) => {
+          const source = await (await resp).arrayBuffer();
+          return await WebAssembly.instantiate(source, importObject);
+      };
+  }
+
+  //wasmの更新日付を取得
+  result =  await getWasmFileLastModified();
+  var ymd = result.toLocaleDateString('sv-SE');
+  var time = result.toLocaleTimeString('ja-JP', {hour12:false});
+  BuildDate = ymd +" "+time
+
+  //カレントURL
+  const extractedUrl = window.location.href.replace(/\/index\.html$/, "/");
+  //スマホか
+  const isSmart = isSmartPhone()
+
+  //Goオブジェクト生成
+  const wasm = new Go();
+  WebAssembly.instantiateStreaming(fetch("main.wasm"), wasm.importObject).then(result => {
+    //wasm起動
+    wasm.run(result.instance);
+    //これはwasm内に用意された関数。
+    SetWasm(extractedUrl,isSmart,BuildDate)
+  });
+}
+
+//スマホ判定
+function isSmartPhone() {
+  if (window.matchMedia && window.matchMedia('(max-device-width: 640px)').matches) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+//[main.wasm]ファイルの更新日時を取得する
+async function getWasmFileLastModified() {
+  const response = await fetch("main.wasm");
+  const lastModified = response.headers.get('Last-Modified');
+  return new Date(lastModified);
+}
+
+//クッキーへの書き込み
+function WriteCookie(name,value){
+  let expires = "";
+  let date = new Date();
+  date.setTime(date.getTime() + (400*24*60*60*1000));
+  expires = "; expires=" + date.toUTCString();
+  document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+}
+
+//クッキーからの読み込み
+function getCookie(name) {
+  let nameEQ = name + "=";
+  let ca = document.cookie.split(';');
+  for(let i=0;i < ca.length;i++) {
+    let c = ca[i];
+    while (c.charAt(0)==' ') c = c.substring(1,c.length);
+    if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+  }
+  return null;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
