@@ -13,13 +13,13 @@ import (
 )
 
 type EcStruct struct {
-	IsUse    bool
+	IsUse    bool //利用中
 	EStete   uint //状態
-	SizeType int
+	SizeType int //サイズ・タイプ
 
-	MHP int
-	HP  int
-	DF  int
+	MHP int	//初期体力
+	HP  int	//体力
+	DF  int	//防御力
 
 	X float64 //X座標。ワールド位置
 	Y float64 //Y座標
@@ -38,11 +38,12 @@ type EcStruct struct {
 }
 
 const (
-	ENEMY_MAX    = 20
-	pNG_OFFSET_X = 64
-	pNG_OFFSET_Y = 0
-	GRAVITY      = 0.1
+	ENEMY_MAX    = 20 //画面上に登場できる敵の最大値
+	pNG_OFFSET_X = 64 //画像イメージのmain.png内での位置
+	pNG_OFFSET_Y = 0 //画像イメージのmain.png内での位置
+	GRAVITY      = 0.1//重力
 
+	//猫状態
 	S_STAND         = 0  //待機
 	S_DMG           = 1  //ダメージ
 	S_DMGBROW       = 2  //ダメージ後倒れ
@@ -57,9 +58,9 @@ const (
 	S_DMGBROWREVNGE = 11 //ダメージ後、吹き飛び、リベンジ
 	S_ROLL          = 12 //距離を取る
 	S_JAMP          = 13 //ジャンプ
-	S_TAME          = 14 //ため
-	S_ATTACK        = 15 //攻撃
-	S_RETURN        = 16 //攻撃後戻る
+	S_TAME          = 14 //反撃ため
+	S_ATTACK        = 15 //反撃
+	S_RETURN        = 16 //反撃後戻る
 	S_KAISYUMACHI   = 17 //マネージャの回収判定待ち
 	S_KAISYUMACHI2  = 18 //マネージャの回収判定待ち(アイテム出さない)
 )
@@ -80,6 +81,7 @@ var (
 // 初期化
 func Init(t *EnemyStruct, e *ebiten.Image, p *player.PlayerStruct) {
 	this = t
+	//main.png内でのイメージ位置
 	offs := [][]int{
 		{0, 0, 32, 32},   //0 待機
 		{32, 0, 32, 32},  //1
@@ -89,6 +91,7 @@ func Init(t *EnemyStruct, e *ebiten.Image, p *player.PlayerStruct) {
 		{160, 0, 32, 32}, //5 回転
 		{192, 0, 32, 32}, //6 怒り
 	}
+	//上記を構造体へ
 	for i := 0; i < len(offs); i++ {
 		offX := pNG_OFFSET_X + offs[i][0]
 		offy := pNG_OFFSET_Y + offs[i][1]
@@ -104,11 +107,13 @@ func Init(t *EnemyStruct, e *ebiten.Image, p *player.PlayerStruct) {
 	this.hpBar = e.SubImage(imageRect).(*ebiten.Image)
 }
 
-// リセット
+//リセット
 func Reset() {
+	//猫攻撃バッファをクリア
 	for i := 0; i < len(this.AttackBuffer); i++ {
 		this.AttackBuffer[i] = false
 	}
+	//猫構造体全滅
 	this.EList = []EcStruct{}
 }
 
@@ -127,6 +132,7 @@ func Update() {
 		//ステータスに応じた処理
 		switch ec.EStete {
 		case S_STAND: //立っている/////////////////////////////////////////////////////////////////
+			//アニメーション
 			ec.DispPngIndex = (ec.Counter/30)%2 + 0
 
 		case S_DMG, S_DMGLEVING1, S_DMGLEVING2, S_DMGLEVING3, S_DMGBROW, S_DMGBROWREVNGE: //ダメージエフェクト中................
@@ -148,6 +154,7 @@ func Update() {
 				ec.Counter = 0
 				//退場ベクトル設定
 				if ec.EStete == S_DMGLEVING2 || ec.EStete == S_DMGLEVING3 {
+					//ゆるりと落ちるベクトル
 					ec.vx = 2
 					ec.vy = -3
 					if ec.EStete == S_DMGLEVING3 {
@@ -156,32 +163,37 @@ func Update() {
 						ec.EStete = S_LEVING2
 					}
 				} else {
+					//跳ね回りベクトル
 					ec.vx = 10 + rand.Float64()*15
 					ec.vy = -(2.5 + rand.Float64()*2.5)
 					ec.EStete = S_LEVING1
 				}
+				//敵はこの座標まで落ちてくると爆発する
 				ec.BakusanY = -(rand.Intn(30))
 
 			} else if ec.EStete == S_DMGBROW { //ダメージ後倒れる..........................
-				//ふっとぶ
+				//ふっとぶ（その後起きがって戦線復帰）
 				ec.EStete = S_BROW
 				ec.vx = 2
 				ec.vy = -1
 
 				ec.Counter = 0
 			} else if ec.EStete == S_DMGBROWREVNGE { //ダメージ後ころがり、反撃..........................
+				//ころころ
 				ec.EStete = S_ROLL
 				ec.vx = 3
 				ec.vy = -2
 				ec.Counter = 0
 
 			} else { //状態遷移なしにしばらくしたら立ち状態に復帰...............................
+				//場合によって寝転がった状態が解除されない。一定時間で起きる
 				if ec.Counter > 30 {
 					ec.EStete = S_STAND
 				}
 			}
 		case S_ROLL: //ころがり
 			ec.DispPngIndex = 5
+			//回転
 			ec.rotate = (ec.rotate + 1) % 360
 			ec.X += 2
 			ec.vy += GRAVITY
@@ -190,17 +202,19 @@ func Update() {
 			if 0 < ec.Y {
 				ec.Y = 0
 			}
+			//画面端についたらジャンプ
 			if ec.Counter > 60*5 || int(ec.X)+(ec.Radius) > camera.X+common.SCREEN_WIDTH/2 {
 				ec.EStete = S_JAMP
 				ec.vx = 0
 				ec.vy = -3 + rand.Float64()*0.5
 				ec.Counter = 0
 			}
-		case S_JAMP:
+		case S_JAMP://ジャンプ
 			ec.DispPngIndex = 6
 			ec.vy += GRAVITY
 			//座標にベクトル加算
 			ec.Y += ec.vy
+			//特定の高さに届いたらため開始
 			if 0 < ec.vy {
 				ec.EStete = S_TAME
 				ec.Counter = uint(rand.Intn(20))
@@ -210,11 +224,12 @@ func Update() {
 			ec.DispPngIndex = 6
 			v := 1
 			ec.Vibration = v * (-1 * int((ec.Counter/2)%2))
+			//ため終わったら突進へ
 			if ec.Counter > 60 {
 				ec.Counter = 0
 				ec.EStete = S_ATTACK
 			}
-		case S_ATTACK: //攻撃
+		case S_ATTACK: //突進
 			ec.DispPngIndex = 6
 			xv := float64(camera.X) - (ec.X)
 			yv := -16 - (ec.Y)
@@ -225,25 +240,33 @@ func Update() {
 			ec.vy = (yv / v) * 20
 			ec.X += ec.vx
 			ec.Y += ec.vy
-			//ヒット
+			
+			//プレイヤーにヒット
 			if (ec.X) < float64(camera.X) {
+				//あたった敵はお帰りモード
 				ec.EStete = S_RETURN
 				ec.Counter = 0
 				ec.vx = 2 + rand.Float64()*2
 				ec.vy = -2
 
+				//プレイヤーの体力を減らす、ということはここではしない
+				//攻撃が当たった、という情報をバッファに詰め込み、マネージャに処理してもらう
+				//当然ながら敵個体別のダメージというものは存在しない
+				//これは運による理不尽死が起きにくくするため
 				for i := 0; i < len(this.AttackBuffer); i++ {
 					if !this.AttackBuffer[i] {
 						this.AttackBuffer[i] = true //ダメージ
 						break
 					}
 				}
-				if player.GetThis().PState.SP > 0 {
+				//プレイヤーのスパイク値があったらその猫はダメージを受ける
+				if player.GetThis().PState.SPIKE > 0 {
 					spdmg := (player.GetThis().PState.SPIKE - ec.DF)
 					if spdmg < 1 {
 						spdmg = 1
 					}
 					ec.HP -= spdmg
+					//それで体力がなくなったら退場
 					if ec.HP <= 0 {
 						ec.HP = 0
 						ec.EStete = S_DMGLEVING3
@@ -251,7 +274,7 @@ func Update() {
 					}
 				}
 			}
-		case S_RETURN:
+		case S_RETURN://突撃後帰り
 			//PNGイメージ
 			ec.DispPngIndex = 6
 
@@ -296,15 +319,15 @@ func Update() {
 			// S_LEVING2　ダウン
 			// S_LEVING3 ダウン（アイテム出さない）
 			if ec.EStete == S_LEVING2 || ec.EStete == S_LEVING3 {
+				//平べったい倒れ画像
 				ec.DispPngIndex = 4
 			} else {
+				//ぐるぐる回るときの画像
 				ec.DispPngIndex = 5
+				//初期値回転角ランダム設定
 				ec.rotate = (ec.rotate + 5) % 360
 			}
-			//画面上外ではタイマー加算停止
-			if ec.Y < common.CAM_Y_OFFSET+16 {
-				ec.Counter--
-			}
+			
 			//地面で跳ね返る
 			if 0 < ec.Y {
 				ec.vy = -ec.vy * 0.09 / 1
