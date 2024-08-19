@@ -12,9 +12,9 @@ const (
 	pNG_OFFSET_X = 0
 	pNG_OFFSET_Y = 128
 
-	E_EXPLOTION = 0
-	E_HITEFFEC  = 1
-	E_DAMAGE    = 2
+	E_EXPLOTION = 0//爆発
+	E_HITEFFEC  = 1//ヒット
+	E_DAMAGE    = 2//ダメージ
 	E_MAX       = 3 //エフェクト最大数
 )
 
@@ -23,15 +23,15 @@ type EfStruct struct {
 	EffectType    int     //エフェクトタイプ
 	Magnification float64 //拡大率
 	Rotate        float64 //回転角
-	X             float64
-	Y             float64
-	Z             int
-	vx            float64
-	vy            float64
-	dispPngIndex  int
-	AnimCounter   int
-	animIndex     int
-	animSpeed     int
+	X             float64 //座標X
+	Y             float64 //座標Y
+	Z             int     //座標Z（仮想奥行き）
+	vx            float64 //ベクトルx
+	vy            float64 //ベクトルy
+	dispPngIndex  int     //表示PNGオフセット
+	AnimCounter   int     //アニメーションカウンタ
+	animIndex     int     //再生中アニメ種類インデックス
+	animSpeed     int     //アニメーション速度
 }
 
 type EffectStruct struct {
@@ -47,9 +47,11 @@ var (
 // --===================================================================================
 // 初期化
 func Init(t *EffectStruct, p *ebiten.Image) {
+	//インスタンスの取り込み
 	this = t
+	//main.pngの中のどの場所の絵か
 	offs := [][]int{
-		{0, 0, 48, 48}, //EXPROSION
+		{0, 0, 48, 48}, //0EXPROSION
 		{48, 0, 48, 48},
 		{96, 0, 48, 48},
 		{144, 0, 48, 48},
@@ -61,22 +63,22 @@ func Init(t *EffectStruct, p *ebiten.Image) {
 		{0, 48, 64, 16}, //9Hit
 		{64, 48, 6, 6},  //10DMG
 	}
-
+	//上記を構造体へ
 	for i := 0; i < len(offs); i++ {
 		offX := pNG_OFFSET_X + offs[i][0]
 		offy := pNG_OFFSET_Y + offs[i][1]
 		offW := offX + offs[i][2]
 		offH := offy + offs[i][3]
-
+		//イメージも切り出して保持
 		imageRect := image.Rect(offX, offy, offW, offH)
 		rect := p.SubImage(imageRect).(*ebiten.Image)
 		this.effectImage = append(this.effectImage, rect)
 	}
-
+	//アニメ種類に応じたキャラパターン
 	animC = make([][]int, E_MAX)
-	animC[E_EXPLOTION] = []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
-	animC[E_HITEFFEC] = []int{9}
-	animC[E_DAMAGE] = []int{10}
+	animC[E_EXPLOTION] = []int{0, 1, 2, 3, 4, 5, 6, 7, 8}//爆発
+	animC[E_HITEFFEC] = []int{9}//ヒットエフェクト
+	animC[E_DAMAGE] = []int{10}//ダメージ
 }
 
 func Update() {
@@ -88,11 +90,13 @@ func Update() {
 			continue
 		}
 
-		//エフェクトタイプ毎の処理
+		//エフェクトタイプ毎の固有処理
 		switch ec.EffectType {
-		case E_HITEFFEC:
+		case E_HITEFFEC://ヒットエフェクト
+			//少しずつ小さくなる
 			ec.Magnification -= 0.1
 		}
+		//ベクトル加算
 		ec.X += ec.vx
 		ec.Y += ec.vy
 
@@ -124,6 +128,7 @@ func Draw(screen *ebiten.Image) {
 		if !ec.IsUse {
 			continue
 		}
+		//爆発フェクトとダメージエフェクトは、これといって特殊なことをしない
 		if ec.EffectType == E_EXPLOTION || ec.EffectType == E_DAMAGE {
 			//エフェクト表示
 			drawImageOption := ebiten.DrawImageOptions{}
@@ -139,7 +144,7 @@ func Draw(screen *ebiten.Image) {
 			drawImageOption.GeoM.Translate(float64(ofX), float64(ofY))
 
 			screen.DrawImage(this.effectImage[ec.dispPngIndex], &drawImageOption)
-		} else if ec.EffectType == E_HITEFFEC {
+		} else if ec.EffectType == E_HITEFFEC {//ヒットエフェクトは半透明で縮小していく
 			//エフェクト表示
 			drawImageOption := ebiten.DrawImageOptions{}
 			r := this.effectImage[ec.dispPngIndex].Bounds().Size()
@@ -164,6 +169,9 @@ func Draw(screen *ebiten.Image) {
 }
 
 // エフェクトを配置する
+//x, y, z, 発生座標
+//etype int, エフェクトタイプ
+//sub1 float64 エフェクト大きさ
 func SetEffect(x, y, z, etype int, sub1 float64) {
 	ec := getBuffer()
 	ec.EffectType = etype
@@ -177,19 +185,19 @@ func SetEffect(x, y, z, etype int, sub1 float64) {
 	ec.Rotate = 0
 
 	switch etype {
-	case E_EXPLOTION:
-		ec.Magnification = sub1
-		ec.animSpeed = int(sub1 * 3)
-	case E_HITEFFEC:
+	case E_EXPLOTION://爆発
+		ec.Magnification = sub1//爆発の大きさ
+		ec.animSpeed = int(sub1 * 3)//爆発が大きいほど爆発もゆっくり
+	case E_HITEFFEC://ヒットエフェクト
 		ec.Magnification = 0.5
 		ec.animSpeed = 3
-		ec.Rotate = rand.Float64() * 360
-	case E_DAMAGE:
-		ec.animSpeed = 10 + rand.Intn(30)
+		ec.Rotate = rand.Float64() * 360//ランダムで回転
+	case E_DAMAGE://ダメージ
+		ec.animSpeed = 10 + rand.Intn(30)//#模様にベクトルを設定
 		ec.vx = -1 - rand.Float64()*2
 		ec.vy = rand.Float64()*2 - 1
 	}
-
+	//他基本初期化
 	ec.animIndex = 0
 	ec.AnimCounter = 0
 	ec.dispPngIndex = animC[ec.EffectType][ec.animIndex]
