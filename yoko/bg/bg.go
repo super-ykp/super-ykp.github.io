@@ -52,15 +52,16 @@ func Update() {
 func Draw(screen *ebiten.Image) {
 	//対象の背景が読込中なら
 	if len(this.BgPingImage) <= this.nowBgIndex || this.BgPingImage[this.nowBgIndex] == nil {
+		//何もしない
 		return
-	} else {
+	} else {//読み込み終わっていたら、表示
 		imageRect := image.Rect(0, 0, common.SCREEN_WIDTH, common.SCREEN_HEIGHT)
 		this.bg_img = this.BgPingImage[this.nowBgIndex].SubImage(imageRect).(*ebiten.Image)
 
 		drawImageOption := ebiten.DrawImageOptions{}
 		screen.DrawImage(this.bg_img, &drawImageOption)
 	}
-	//地面
+	//地面、カメラ位置に応じて生成される
 	for i := 0; i <= common.SCREEN_WIDTH/PNG_WIDTH+2; i++ {
 		drawImageOption := ebiten.DrawImageOptions{}
 		ofX := float64(int(PNG_WIDTH-camera.CamOffsetX)%PNG_WIDTH) - PNG_WIDTH
