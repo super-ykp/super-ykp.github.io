@@ -88,10 +88,10 @@ func (g *GameStruct) Update() error {
 	case GameModeInit:
 		//ゲームモード「ローディング」
 		GameMode = GameModeLoading
-	case GameModePushStart:
-		UpdatePushStart(g)
 	case GameModeLoading:
 		UpdateLoading(g)
+	case GameModePushStart:
+		UpdatePushStart(g)
 	case GameModeGame:
 		UpdateGame(g)
 	}
@@ -218,7 +218,7 @@ func Init(g *GameStruct) {
 	m_MainPngImage = fileloader.GetPngImg("img/main.png")
 	m_TitlePngImage = fileloader.GetPngImg("img/title.png")
 
-	//初期化。go言語は相互参照できないので、ほとんどはマネージャに集める
+	//初期化。go言語は相互参照できないので、ほとんどはマネージャに参照を集める
 	input.Init(&g.input)
 	sound.Init(&g.sound)
 	bg.Init(&g.bg, m_MainPngImage)
